@@ -24,6 +24,7 @@ import sys
 import os
 import socket
 import platform
+import threading
 
 # ============ 配置 ============
 # fold-server 监听端口（宿主机）
@@ -198,7 +199,6 @@ def setup_fport():
 
         output = (result.stdout or "") + (result.stderr or "")
         if "OK" in output:
-            print(f"  ✓ hdc 反向端口转发已建立（rport: 模拟器内 127.0.0.1:{DEVICE_PORT} → 宿主机:{PORT}）")
             return True
         else:
             print(f"  ✗ hdc rport 建立失败: {output}")
@@ -334,6 +334,12 @@ def main():
     if len(sys.argv) > 1:
         EMULATOR_INSTANCE = sys.argv[1]
 
+    # ===== 日志落盘（之后所有 print 写入文件，不依赖 spawn 的 stdio）=====
+    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fold-server.log')
+    log_fp = open(log_path, 'w', buffering=1, encoding='utf-8')  # 行缓冲，实时落盘，UTF-8 避免 Windows 乱码
+    sys.stdout = log_fp
+    sys.stderr = log_fp
+
     print("=" * 50)
     print(f"折叠控制 HTTP 服务启动")
     print(f"  平台: {platform.system()}")
@@ -341,22 +347,36 @@ def main():
     print(f"  hdc: {HDC}")
     print(f"  模拟器实例: {EMULATOR_INSTANCE}")
     print(f"  监听端口: {PORT}")
-    print(f"")
+    print(f"  日志文件: {log_path}")
+    print_paths()
+    print("")
 
-    # 建立 hdc 端口转发（所有平台通用，模拟器内 127.0.0.1 = 宿主机）
+    # ===== 先启动 HTTP 服务（让健康检查尽早通过，不被 setup_fport 阻塞）=====
+    server = http.server.HTTPServer(("0.0.0.0", PORT), FoldHandler)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    print(f"  HTTP 服务已就绪，监听端口 {PORT}")
+    print("")
+
+    # ===== 再建立 hdc 端口转发（不阻塞 /health，失败时日志可见）=====
     print("  建立 hdc 端口转发...")
-    setup_fport()
+    if setup_fport():
+        print(f"  ✓ hdc 反向端口转发已建立（rport: 模拟器内 127.0.0.1:{DEVICE_PORT} → 宿主机:{PORT}）")
+    else:
+        print(f"  ⚠ hdc 端口转发失败 — 设备端可能无法连接 fold-server")
+        print(f"    请确认模拟器已连接（hdc list target）并重试")
+    print("")
 
-    print(f"")
-    print(f"  连接方式: 模拟器内访问 127.0.0.1:{PORT}（通过 fport 转发到本服务）")
+    print(f"  连接方式: 模拟器内访问 127.0.0.1:{DEVICE_PORT}（通过 rport 转发）")
     print(f"  API: GET /fold?state=open|half-open|close")
     print(f"  API: GET /rotation?direction=left|right")
     print(f"  按 Ctrl+C 停止")
     print("=" * 50)
+    sys.stdout.flush()
 
-    server = http.server.HTTPServer(("0.0.0.0", PORT), FoldHandler)
+    # 主线程等待 Ctrl+C
     try:
-        server.serve_forever()
+        server_thread.join()
     except KeyboardInterrupt:
         print("\n服务已停止")
         # 清理端口转发
@@ -368,7 +388,8 @@ def main():
                 subprocess.run([HDC] + cmd_rm.split(), capture_output=True, text=True, timeout=5)
         except Exception:
             pass
-        server.server_close()
+        server.shutdown()
+        print("已清理，再见")
 
 
 if __name__ == "__main__":

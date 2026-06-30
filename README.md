@@ -40,15 +40,15 @@ hvigorw assembleHap      # 编译，触发自动启动
 hvigorw ohosTest         # 跑测试，服务已在后台就绪
 ```
 
-控制台看到 `[fold-server] ✓ 已就绪` 即表示服务可用。
+控制台看到 `[fold-server] ✓ HTTP 服务已就绪` 即表示服务可用。启动日志写入 `fold-server.log`（自动启动失败或需排查时查看）。
 
-**脚本路径配置**：自动启动通过 `hvigorfile.ts:13` 定位脚本：
+**脚本路径**：自动启动通过 `hvigorfile.ts` 定位脚本：
 
 ```ts
-const scriptPath = path.join(__dirname, 'scripts', 'fold-server.py');
+const scriptPath = path.join(__dirname, 'fold-server.py');
 ```
 
-该路径需与脚本实际位置一致。若脚本不在 `scripts/fold-server.py`（例如放在工程根目录），请改这一行，否则 `existsSync` 检查不通过、自动启动会被静默跳过。
+脚本与本文件同在工程根目录，默认即可对齐，无需改动。
 
 > 手动启动（可选）：用于单独调试服务，或自动启动失败时兜底
 >
@@ -108,7 +108,7 @@ curl "http://127.0.0.1:8766/fold?state=half-open" # 悬停
 
 ## 常见问题
 
-**自动启动没生效（看不到 `[fold-server]` 日志）**：检查 `hvigorfile.ts:13` 的脚本路径是否与 `fold-server.py` 实际位置一致（默认 `scripts/fold-server.py`）。路径对不上时自动启动会被静默跳过。若自动启动超时，会打印 `请手动运行: python3 scripts/fold-server.py`，按提示手动拉起即可。
+**自动启动没生效（看不到 `[fold-server]` 日志）**：确认 `fold-server.py` 与 `hvigorfile.ts` 同在工程根目录；`existsSync` 检查不通过时自动启动会被静默跳过。若自动启动超时，控制台会提示查看 `fold-server.log`（常见原因：hdc 未连接导致 rport 建立失败，日志里会有详细输出）。
 
 **找不到 emulator / hdc**：设置环境变量 `DEVECO_SDK_HOME`（SDK 路径）、`HDC_PATH`（hdc 路径），或把它们加入 PATH。
 
