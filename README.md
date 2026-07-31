@@ -3,11 +3,11 @@
 HarmonyOS 折叠屏模拟器折叠 / 悬停 / 旋转控制工具。
 
 包含三部分：
-- `emulator-control-server.py` —— 宿主机 HTTP 服务，执行 emulator 折叠命令
-- `FoldTrigger.ets` —— ohosTest 测试侧封装，用例里直接调用
-- `config.py` —— 集中配置（实例名/端口/窗口模式等）
+- `emulator-control-server.py` -- 宿主机 HTTP 服务，执行 emulator 折叠命令
+- `FoldTrigger.ets` -- ohosTest 测试侧封装，用例里直接调用
+- `config.py` -- 集中配置（实例名/端口/窗口模式等）
 
-链路：`用例 → FoldTrigger.ets → hdc rport → emulator-control-server.py → emulator`
+链路：`用例 -> FoldTrigger.ets -> hdc rport -> emulator-control-server.py -> emulator`
 
 ---
 
@@ -21,7 +21,7 @@ HarmonyOS 折叠屏模拟器折叠 / 悬停 / 旋转控制工具。
 
 ## 快速开始
 
-三步：改配置 → 跑服务 → 跑用例。
+三步：改配置 -> 跑服务 -> 跑用例。
 
 ### 第 1 步：改 config.py（告诉它控制哪台模拟器）
 
@@ -42,13 +42,13 @@ PORT = 8766                        # 一般不用改
 python3 emulator-control-server.py
 ```
 
-它会：① 自动拉起模拟器（没在跑的话）② 等 hdc 识别设备 ③ 建立 hdc 端口转发 ④ 监听 8766 等用例请求。**保持运行**，跑用例期间别关。
+它会：(1) 自动拉起模拟器（没在跑的话）(2) 等 hdc 识别设备 (3) 建立 hdc 端口转发 (4) 监听 8766 等用例请求。**保持运行**，跑用例期间别关。
 
 看到这两行就是成功了：
 
 ```
-✓ 目标设备（实例自动定位）: 127.0.0.1:5557
-✓ hdc 反向端口转发已建立（rport: 模拟器内 127.0.0.1:8765 → 宿主机:8766）
+[OK] 目标设备（实例自动定位）: 127.0.0.1:5557
+[OK] hdc 反向端口转发已建立（rport: 模拟器内 127.0.0.1:8765 -> 宿主机:8766）
 ```
 
 按 `Ctrl+C` 停止（会自动清理端口转发 + 残留进程）。排查看 `emulator-control-server.log`。
@@ -121,17 +121,17 @@ curl "http://127.0.0.1:8766/fold?state=half-open" # 悬停
 
 所有可调项集中在 `config.py`（纯 Python 变量，直接改值），改完重启 `emulator-control-server.py` 生效。
 
-**优先级**（高 → 低）：`命令行参数  >  环境变量  >  config.py  >  代码默认值`
+**优先级**（高 -> 低）：`命令行参数  >  环境变量  >  config.py  >  代码默认值`
 
 | 配置项 | 命令行 | 环境变量 | config.py 变量 | 默认 |
 |--------|--------|----------|----------------|------|
 | 模拟器实例名 | `python3 emulator-control-server.py "Pura X"` | `EMULATOR_INSTANCE` | `EMULATOR_INSTANCE` | `Mate X7` |
-| 窗口模式 | — | `FOLD_HEADLESS` | `HEADLESS` | 带窗口 |
-| 启动超时 | — | `FOLD_EMU_TIMEOUT` | `EMU_START_TIMEOUT` | `120` |
-| 服务端口 | — | — | `PORT` | `8766` |
-| 设备端口 | — | — | `DEVICE_PORT` | `8765` |
-| 多设备 connect-key | — | `HDC_CONNECT_KEY` | `HDC_CONNECT_KEY` | 自动 |
-| Emulator 路径 | — | `EMULATOR_PATH` | `EMULATOR_PATH` | 自动探测 |
-| hdc 路径 | — | `HDC_PATH` | `HDC_PATH` | 自动探测 |
+| 窗口模式 | -- | `FOLD_HEADLESS` | `HEADLESS` | 带窗口 |
+| 启动超时 | -- | `FOLD_EMU_TIMEOUT` | `EMU_START_TIMEOUT` | `120` |
+| 服务端口 | -- | -- | `PORT` | `8766` |
+| 设备端口 | -- | -- | `DEVICE_PORT` | `8765` |
+| 多设备 connect-key | -- | `HDC_CONNECT_KEY` | `HDC_CONNECT_KEY` | 自动 |
+| Emulator 路径 | -- | `EMULATOR_PATH` | `EMULATOR_PATH` | 自动探测 |
+| hdc 路径 | -- | `HDC_PATH` | `HDC_PATH` | 自动探测 |
 
 > 个人临时换值不必改 config.py，用环境变量或命令行参数覆盖即可。

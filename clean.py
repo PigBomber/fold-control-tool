@@ -7,7 +7,7 @@
 #
 # 清理内容：
 #   1. 杀掉占用 8766 端口的残留进程（emulator-control-server.py 或其它）
-#   2. 清除 hdc 的 8765↔8766 fport/rport 残留转发
+#   2. 清除 hdc 的 8765<->8766 fport/rport 残留转发
 #   3. 验证端口已释放、健康检查无响应
 #
 # 用法：
@@ -58,7 +58,7 @@ def find_port_holders(port):
         # netstat -ano: 找 LISTENING 的 PID
         rc, out = run(f'netstat -ano', timeout=5)
         if rc != 0:
-            print(f"  ✗ netstat 查询失败: {out}")
+            print(f"  [X] netstat 查询失败: {out}")
             return holders
         for line in out.splitlines():
             cols = line.split()
@@ -73,7 +73,7 @@ def find_port_holders(port):
             # lsof 无输出时返回码非 0，但可能只是端口没人占用（正常情况）
             if not out.strip():
                 return holders
-            print(f"  ⚠ lsof 查询异常: {out.strip()}")
+            print(f"  [!] lsof 查询异常: {out.strip()}")
             return holders
         for line in out.splitlines()[1:]:  # 跳过表头
             parts = line.split()
@@ -107,7 +107,7 @@ def clean_port(port):
     print(f"[1/3] 检查端口 {port} 占用...")
     holders = find_port_holders(port)
     if not holders:
-        print(f"  ✓ 端口 {port} 无占用")
+        print(f"  [OK] 端口 {port} 无占用")
         return True
 
     ok = True
@@ -115,9 +115,9 @@ def clean_port(port):
         print(f"  发现占用: PID={pid} ({name})，正在清理...")
         success, msg = kill_pid(pid)
         if success:
-            print(f"    ✓ 已终止 PID {pid}")
+            print(f"    [OK] 已终止 PID {pid}")
         else:
-            print(f"    ✗ 终止失败 PID {pid}: {msg}")
+            print(f"    [X] 终止失败 PID {pid}: {msg}")
             ok = False
     return ok
 
@@ -167,17 +167,17 @@ def clean_hdc_forwards(hdc):
     """清除所有涉及 8765/8766 的 hdc 转发。"""
     print(f"[2/3] 清除 hdc 端口转发（8765/8766）...")
     if hdc is None:
-        print("  ⚠ 找不到 hdc（未配置 PATH / HDC_PATH），跳过转发清理")
+        print("  [!] 找不到 hdc（未配置 PATH / HDC_PATH），跳过转发清理")
         return False
 
     # 先列出当前转发
     rc, out = run(f'"{hdc}" fport ls' if is_windows() else f"{hdc} fport ls", timeout=5)
     if rc != 0:
-        print(f"  ⚠ hdc fport ls 失败: {out.strip()}")
+        print(f"  [!] hdc fport ls 失败: {out.strip()}")
         return False
 
     if "Empty" in out or not out.strip():
-        print("  ✓ 无 hdc 转发")
+        print("  [OK] 无 hdc 转发")
         return True
 
     # 找出涉及 8765/8766 的转发并逐条清除
@@ -196,13 +196,13 @@ def clean_hdc_forwards(hdc):
         full = f'"{hdc}" {rm_cmd}' if is_windows() else f"{hdc} {rm_cmd}"
         rc2, out2 = run(full, timeout=5)
         if rc2 == 0:
-            print(f"  ✓ 已清除转发: {src} → {dst}")
+            print(f"  [OK] 已清除转发: {src} -> {dst}")
             removed += 1
         else:
-            print(f"  ✗ 清除失败 {src} → {dst}: {out2.strip()}")
+            print(f"  [X] 清除失败 {src} -> {dst}: {out2.strip()}")
 
     if removed == 0:
-        print("  ✓ 无涉及 8765/8766 的转发需清理")
+        print("  [OK] 无涉及 8765/8766 的转发需清理")
     return True
 
 
@@ -217,10 +217,10 @@ def health_check(port):
         s.connect(("127.0.0.1", port))
         s.close()
         # 端口还能连上 = 还有进程在监听（清理未彻底）
-        print(f"  ⚠ 端口 {port} 仍可连接，清理可能未彻底")
+        print(f"  [!] 端口 {port} 仍可连接，清理可能未彻底")
         return False
     except (ConnectionRefusedError, socket.timeout, OSError):
-        print(f"  ✓ 端口 {port} 已释放，emulator-control-server 未在响应")
+        print(f"  [OK] 端口 {port} 已释放，emulator-control-server 未在响应")
         return True
 
 

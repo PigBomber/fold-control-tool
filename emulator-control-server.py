@@ -30,7 +30,7 @@ import signal
 import config as _CFG  # 同目录 config.py（入库默认配置）
 
 # ============ 配置加载 ============
-# 优先级（高 → 低）：命令行参数 > 环境变量 > config.py > 代码默认值
+# 优先级（高 -> 低）：命令行参数 > 环境变量 > config.py > 代码默认值
 
 
 def _pick(env_key, cfg_name, default):
@@ -149,7 +149,7 @@ def find_emulator():
         if c and os.path.isfile(c):
             return c
 
-    print(f"  ⚠ 找不到 emulator，请设置 EMULATOR_PATH 环境变量")
+    print(f"  [!] 找不到 emulator，请设置 EMULATOR_PATH 环境变量")
     return exe_name  # 兜底，让命令失败时报错
 
 
@@ -194,8 +194,8 @@ HDC = find_hdc()
 def print_paths():
     print(f"  路径探测:")
     print(f"    DevEco 根目录: {find_deveco_root() or '未找到（用环境变量 DEVECO_SDK_HOME 指定）'}")
-    print(f"    Emulator: {EMULATOR}{'  ✓' if os.path.isfile(EMULATOR) else '  ✗ 未找到'}")
-    print(f"    hdc: {HDC}{'  ✓' if os.path.isfile(HDC) else '  （用 PATH 兜底）'}")
+    print(f"    Emulator: {EMULATOR}{'  [OK]' if os.path.isfile(EMULATOR) else '  [X] 未找到'}")
+    print(f"    hdc: {HDC}{'  [OK]' if os.path.isfile(HDC) else '  （用 PATH 兜底）'}")
 
 
 # ============ 跨平台命令执行辅助 ============
@@ -319,10 +319,10 @@ def list_targets():
 
 
 def build_instance_connectkey_map():
-    """建立「Emulator 实例名 → hdc connect-key」的映射。
+    """建立「Emulator 实例名 -> hdc connect-key」的映射。
     原理：每个 `Emulator -start <实例名>` 进程会独占监听一个 TCP 端口（如 127.0.0.1:5555），
     该端口就是它在 hdc 里的 connect-key。所以：
-      Emulator 进程命令行(-start 实例名) → PID → lsof 查监听端口 → connect-key
+      Emulator 进程命令行(-start 实例名) -> PID -> lsof 查监听端口 -> connect-key
     返回 dict: {实例名: '127.0.0.1:5555', ...}。找不到返回空 dict。
     跨平台：Mac/Linux 用 lsof，Windows 用 netstat。"""
     mapping = {}
@@ -365,7 +365,7 @@ def build_instance_connectkey_map():
     if not emulator_pids:
         return mapping
 
-    # 2. 对每个 PID，查它监听的 TCP 端口 → 组成 connect-key
+    # 2. 对每个 PID，查它监听的 TCP 端口 -> 组成 connect-key
     for pid, inst_name in emulator_pids.items():
         port = _listening_port(pid)
         if port:
@@ -419,14 +419,14 @@ def _listening_port(pid):
 def resolve_connect_key():
     """确定本服务要路由到的目标设备 connect-key。
     策略：
-      优先用自动映射（EMULATOR_INSTANCE → connect-key，靠 Emulator 进程监听端口），
+      优先用自动映射（EMULATOR_INSTANCE -> connect-key，靠 Emulator 进程监听端口），
       因为它比 hdc list targets 更稳定、更准确（后者有抖动，且多设备时不知哪个对哪个实例）。
       只要映射查到目标实例的 connect-key，就直接用它（不依赖 list_targets 的时序）。
       映射失败再退化为 list_targets。
       返回 (connect_key_or_None, reason)。"""
     global CURRENT_CONNECT_KEY
 
-    # 优先级 1：自动映射 EMULATOR_INSTANCE → connect-key（最可靠，单/多设备通用）
+    # 优先级 1：自动映射 EMULATOR_INSTANCE -> connect-key（最可靠，单/多设备通用）
     # 关键：映射查到就用，不被 list_targets 的时序/抖动影响
     inst_map = build_instance_connectkey_map()
     mapped = inst_map.get(EMULATOR_INSTANCE)
@@ -450,17 +450,17 @@ def resolve_connect_key():
         return cfg_key, "configured"
     # 未明确指定：默认取第一个，但强烈提示用户多设备需指定
     CURRENT_CONNECT_KEY = keys[0]
-    print(f"  ⚠ 检测到 {len(keys)} 台设备: {keys}")
+    print(f"  [!] 检测到 {len(keys)} 台设备: {keys}")
     print(f"    映射未找到实例 '{EMULATOR_INSTANCE}'，当前默认使用第一台: {keys[0]}")
     print(f"    如需指定，设置环境变量 HDC_CONNECT_KEY（值为 hdc list targets 的 connect-key）后重启")
     return keys[0], "first_of_multi"
 
-    # 多设备优先级 1：自动映射 EMULATOR_INSTANCE → connect-key
+    # 多设备优先级 1：自动映射 EMULATOR_INSTANCE -> connect-key
     inst_map = build_instance_connectkey_map()
     mapped = inst_map.get(EMULATOR_INSTANCE)
     if mapped and mapped in keys:
         CURRENT_CONNECT_KEY = mapped
-        print(f"  ✓ 多设备自动定位: 实例 '{EMULATOR_INSTANCE}' → {mapped}")
+        print(f"  [OK] 多设备自动定位: 实例 '{EMULATOR_INSTANCE}' -> {mapped}")
         return mapped, "mapped"
 
     # 多设备优先级 2：config.py/环境变量指定的 connect-key
@@ -470,7 +470,7 @@ def resolve_connect_key():
         return cfg_key, "configured"
     # 未明确指定：默认取第一个，但强烈提示用户多设备需指定
     CURRENT_CONNECT_KEY = keys[0]
-    print(f"  ⚠ 检测到 {len(keys)} 台设备: {keys}")
+    print(f"  [!] 检测到 {len(keys)} 台设备: {keys}")
     print(f"    当前默认使用第一台: {keys[0]}")
     print(f"    如需指定其它设备，设置环境变量 HDC_CONNECT_KEY（值为 hdc list targets 的 connect-key）后重启")
     return keys[0], "first_of_multi"
@@ -492,7 +492,7 @@ def sleep_interruptible(seconds, stop_flag=None):
 
 def wait_device_online(timeout=EMU_START_TIMEOUT, instance_name=None, stop_flag=None):
     """轮询直到「指定实例」对应的设备上线（hdc 能识别到它的 connect-key）。
-    多设备场景下必须精确等 instance_name 那台，不能见任意设备就返回——
+    多设备场景下必须精确等 instance_name 那台，不能见任意设备就返回，
     否则若另一台已在跑，会误把它的 connect-key 当成本实例。
     返回 (connect_key_or_None, message)。Ctrl-C 或 stop_flag 可即时中断。"""
     deadline = time.time() + timeout
@@ -510,7 +510,7 @@ def wait_device_online(timeout=EMU_START_TIMEOUT, instance_name=None, stop_flag=
             if inst:
                 last_running = inst["isRunning"]
         # 2) 精确等 instance_name 对应的 connect-key 出现
-        #    关键：必须同时满足两个条件才算真正可用——
+        #    关键：必须同时满足两个条件才算真正可用：
         #    a) 映射能查到 connect-key（Emulator 进程已监听端口）
         #    b) hdc list targets 也包含这个 key（hdc server 已登记设备）
         #    只满足 a 不满足 b 时，rport 会报 "Device not found or connected"（时序竞态）。
@@ -542,13 +542,13 @@ def ensure_emulator_running(stop_flag=None):
     stop_flag: 共享 flag dict，Ctrl-C 时由全局 handler 置 {stop:True}，本函数提前返回。"""
     # Emulator 不可用直接跳过（无法探测/启动）
     if not os.path.isfile(EMULATOR):
-        print(f"  ⚠ 找不到 Emulator，跳过自动启动检查（手动确认模拟器状态）: {EMULATOR}")
+        print(f"  [!] 找不到 Emulator，跳过自动启动检查（手动确认模拟器状态）: {EMULATOR}")
         return
 
     inst = find_instance_status(EMULATOR_INSTANCE)
     if inst is None:
         # 实例名不存在：列出可用实例名辅助排查
-        print(f"  ⚠ 实例 '{EMULATOR_INSTANCE}' 不存在，无法自动启动")
+        print(f"  [!] 实例 '{EMULATOR_INSTANCE}' 不存在，无法自动启动")
         names = list_instance_names()
         if names:
             print(f"    可用实例: {', '.join(names)}")
@@ -556,15 +556,15 @@ def ensure_emulator_running(stop_flag=None):
         return
 
     if inst["isRunning"]:
-        print(f"  ✓ 实例 '{EMULATOR_INSTANCE}' 已在运行")
+        print(f"  [OK] 实例 '{EMULATOR_INSTANCE}' 已在运行")
         return
 
-    # 未运行 → 自动启动（无窗口）
+    # 未运行 -> 自动启动（无窗口）
     mode = "无窗口" if HEADLESS else "带窗口"
     print(f"  实例 '{EMULATOR_INSTANCE}' 未运行，自动启动中（{mode}模式）...")
     ok, msg = start_emulator(EMULATOR_INSTANCE)
     if not ok:
-        print(f"  ✗ 启动模拟器失败: {msg}")
+        print(f"  [X] 启动模拟器失败: {msg}")
         return
     print(f"  {msg}")
     print(f"  等待模拟器上线 / hdc 识别设备（最多 {EMU_START_TIMEOUT}s，按 Ctrl+C 可中断）...")
@@ -574,18 +574,18 @@ def ensure_emulator_running(stop_flag=None):
         # handler 已设置 stop_flag，标记一下让主循环直接进清理
         if stop_flag is not None:
             stop_flag["stop"] = True
-        print(f"\n  ⚠ 用户中断等待，模拟器可能仍在后台启动中")
+        print(f"\n  [!] 用户中断等待，模拟器可能仍在后台启动中")
         return
     if key:
-        print(f"  ✓ 模拟器已上线 — {msg}")
+        print(f"  [OK] 模拟器已上线，{msg}")
     else:
-        print(f"  ⚠ {msg}")
+        print(f"  [!] {msg}")
         print(f"    emulator-control-server 继续运行，但 hdc 转发可能失败")
         print(f"    模拟器就绪后重启本服务即可重建转发")
 
 
 def setup_fport():
-    """建立 hdc 反向端口转发（rport）：模拟器内访问 127.0.0.1:DEVICE_PORT → 宿主机:PORT
+    """建立 hdc 反向端口转发（rport）：模拟器内访问 127.0.0.1:DEVICE_PORT -> 宿主机:PORT
     用不同端口避免与 emulator-control-server 监听冲突。
     多设备时自动用 -t <connect-key> 路由到目标实例。"""
     global CURRENT_CONNECT_KEY
@@ -593,23 +593,23 @@ def setup_fport():
         # 确认 hdc 可用
         rc, out = run_cmd([HDC, "version"], timeout=5)
         if rc != 0:
-            print(f"  ✗ hdc 不可用: {HDC}")
+            print(f"  [X] hdc 不可用: {HDC}")
             print(f"    错误: {out}")
             return False
 
         # 确定目标设备 connect-key（0/1/多 设备三种情况）
         key, reason = resolve_connect_key()
         if not key:
-            print(f"  ✗ hdc 未识别到任何设备")
+            print(f"  [X] hdc 未识别到任何设备")
             print(f"    请确认模拟器已连接：{HDC} list targets")
             return False
         if reason == "auto":
-            print(f"  ✓ 目标设备: {key}")
+            print(f"  [OK] 目标设备: {key}")
         elif reason == "mapped":
-            print(f"  ✓ 目标设备（实例自动定位）: {key}")
+            print(f"  [OK] 目标设备（实例自动定位）: {key}")
         # reason == 'first_of_multi' 的警告已在 resolve_connect_key 里打印
         elif reason == "configured":
-            print(f"  ✓ 目标设备（config.py/环境变量 指定）: {key}")
+            print(f"  [OK] 目标设备（config.py/环境变量 指定）: {key}")
 
         # 清除可能存在的旧转发（fport rm 能同时清 fport 和 rport 建的转发）
         # 注意：rm 时端口组合是 "源 目标"
@@ -620,20 +620,20 @@ def setup_fport():
         ]:
             hdc_cmd(rm_args, timeout=5)  # 忽略返回，清旧的而已
 
-        # 建立 rport（设备内 DEVICE_PORT → 宿主机 PORT）
+        # 建立 rport（设备内 DEVICE_PORT -> 宿主机 PORT）
         rc, output = hdc_cmd(["rport", f"tcp:{DEVICE_PORT}", f"tcp:{PORT}"], timeout=5)
         if rc == 0 and "OK" in output:
             return True
         else:
-            print(f"  ✗ hdc rport 建立失败: {output}")
+            print(f"  [X] hdc rport 建立失败: {output}")
             print(f"    请确认模拟器已连接：{HDC} list targets")
             return False
     except FileNotFoundError:
-        print(f"  ✗ 找不到 hdc: {HDC}")
+        print(f"  [X] 找不到 hdc: {HDC}")
         print(f"    请设置 HDC_PATH 环境变量指向 hdc.exe/hdc 的路径")
         return False
     except Exception as e:
-        print(f"  ✗ 建立端口转发异常: {e}")
+        print(f"  [X] 建立端口转发异常: {e}")
         return False
 
 # 允许的折叠状态
@@ -699,12 +699,12 @@ class FoldHandler(http.server.BaseHTTPRequestHandler):
             if state not in VALID_STATES:
                 self._respond(400, {"success": False, "error": f"无效状态: {state}"})
                 return
-            print(f"[{self.log_date_time_string()}] 触发折叠 → {state}")
+            print(f"[{self.log_date_time_string()}] 触发折叠 -> {state}")
             success, msg = do_fold(state)
             if success:
-                print(f"  ✓ 已切换到 {state}")
+                print(f"  [OK] 已切换到 {state}")
             else:
-                print(f"  ✗ 切换失败: {msg}")
+                print(f"  [X] 切换失败: {msg}")
             self._respond(200, {"success": success, "state": state, "message": msg})
 
         # 旋转控制
@@ -713,12 +713,12 @@ class FoldHandler(http.server.BaseHTTPRequestHandler):
             if direction not in VALID_ROTATIONS:
                 self._respond(400, {"success": False, "error": f"无效方向: {direction}"})
                 return
-            print(f"[{self.log_date_time_string()}] 触发旋转 → {direction}")
+            print(f"[{self.log_date_time_string()}] 触发旋转 -> {direction}")
             success, msg = do_rotation(direction)
             if success:
-                print(f"  ✓ 已旋转 {direction}")
+                print(f"  [OK] 已旋转 {direction}")
             else:
-                print(f"  ✗ 旋转失败: {msg}")
+                print(f"  [X] 旋转失败: {msg}")
             self._respond(200, {"success": success, "direction": direction, "message": msg})
 
         elif self.path == "/health":
@@ -833,9 +833,9 @@ def main():
         # ===== 再建立 hdc 端口转发（多设备自动用 -t 路由）=====
         print("  建立 hdc 端口转发...")
         if setup_fport():
-            print(f"  ✓ hdc 反向端口转发已建立（rport: 模拟器内 127.0.0.1:{DEVICE_PORT} → 宿主机:{PORT}）")
+            print(f"  [OK] hdc 反向端口转发已建立（rport: 模拟器内 127.0.0.1:{DEVICE_PORT} -> 宿主机:{PORT}）")
         else:
-            print(f"  ⚠ hdc 端口转发失败 — 设备端可能无法连接 emulator-control-server")
+            print(f"  [!] hdc 端口转发失败，设备端可能无法连接 emulator-control-server")
             print(f"    请确认模拟器已连接（hdc list target）并重试")
         print("")
 
@@ -875,7 +875,7 @@ def do_shutdown(server, server_thread):
     # 2) 移除本服务建立的 hdc 反向转发（多设备时也用 -t 路由）
     try:
         hdc_cmd(["fport", "rm", f"tcp:{DEVICE_PORT}", f"tcp:{PORT}"], timeout=5)
-        print("  ✓ 已移除 hdc 反向端口转发")
+        print("  [OK] 已移除 hdc 反向端口转发")
     except Exception:
         pass
 
@@ -892,11 +892,11 @@ def do_shutdown(server, server_thread):
                 capture_output=False,
             )
         else:
-            print(f"  ⚠ clean.py 不存在（{clean_script}），跳过彻底清理")
+            print(f"  [!] clean.py 不存在（{clean_script}），跳过彻底清理")
     except subprocess.TimeoutExpired:
-        print("  ⚠ clean.py 执行超时（30s），强制继续退出")
+        print("  [!] clean.py 执行超时（30s），强制继续退出")
     except Exception as e:
-        print(f"  ⚠ 调用 clean.py 失败: {e}")
+        print(f"  [!] 调用 clean.py 失败: {e}")
 
     print("已清理，再见")
     sys.stdout.flush()
